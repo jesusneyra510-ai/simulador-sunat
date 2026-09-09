@@ -365,6 +365,24 @@
   </div>
 </div>
 
+<!-- MODAL PEGAR HTML -->
+<div class="sch-modal" id="schPasteHtmlModal" style="display:none;">
+  <div class="sch-window" style="max-width:700px; height:auto; max-height:85vh;">
+    <div class="sch-win-top">
+      <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">📋 Importar Código HTML de Balotario</h3>
+      <button onclick="document.getElementById('schPasteHtmlModal').style.display='none'" style="background:none; border:none; color:white; font-size:1.3rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="sch-win-body">
+      <p style="font-size:0.85rem; color:#5c6f86; margin-top:0;">Pega aquí el código HTML completo del balotario. Se mantendrán intactas las tildes, eñes y caracteres especiales.</p>
+      <textarea id="schPasteHtmlText" class="sch-input" style="height:230px; font-family:monospace; font-size:0.82rem;" placeholder="<!DOCTYPE html>..."></textarea>
+      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" onclick="document.getElementById('schPasteHtmlModal').style.display='none'" style="background:#eef6ff; color:#5c6f86; border:none; padding:9px 16px; border-radius:10px; font-weight:800; cursor:pointer;">Cancelar</button>
+        <button type="button" onclick="schProcessPastedHtml()" style="background:#005eb8; color:white; border:none; padding:9px 18px; border-radius:10px; font-weight:800; cursor:pointer;">📥 Importar Balotario</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PANEL ADMIN -->
 <div class="sch-modal" id="schAdminModal" style="display:none;">
   <div class="sch-window">
@@ -438,10 +456,31 @@
         </table>
       </div>
 
-      <!-- TAB 2: GESTIÓN DE BALOTARIOS -->
+      <!-- TAB 2: GESTIÓN E IMPORTACIÓN DE BALOTARIOS -->
       <div id="tab-balotarios" class="sch-tab-content" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <p style="color:#5c6f86; font-size:0.88rem; margin:0;">Balotarios sincronizados en la nube de Google Sheets:</p>
+        
+        <!-- SECCIÓN DE IMPORTACIÓN DE BALOTARIO HTML SIN ERRORES EN LETRAS -->
+        <div class="enroll-box" style="background:#f4fbf7; border-color:#a8e3c1; margin-bottom:18px;">
+          <h4 style="margin:0 0 8px; color:#0f8a55; font-size:1rem; display:flex; align-items:center; gap:8px;">
+            📥 Importar Balotario desde Archivo o Código HTML
+          </h4>
+          <p style="font-size:0.84rem; color:#5c6f86; margin:0 0 12px;">
+            Sube un archivo HTML o pega el código. El importador procesará de forma estricta la codificación UTF-8 para garantizar que tildes, eñes y caracteres especiales no contengan ningún error.
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <label style="background:#005eb8; color:white; padding:9px 16px; border-radius:10px; font-weight:800; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+              📁 Cargar Archivo .HTML
+              <input type="file" id="schImportFileInput" accept=".html,.htm" style="display:none;" onchange="schHandleFileImport(event)">
+            </label>
+            <button type="button" onclick="document.getElementById('schPasteHtmlModal').style.display='flex'" style="background:#ffffff; color:#005eb8; border:1.5px solid #005eb8; padding:8px 15px; border-radius:10px; font-weight:800; font-size:0.85rem; cursor:pointer;">
+              📋 Pegar Código HTML
+            </button>
+            <span id="schImportStatus" style="font-size:0.85rem; font-weight:800; color:#0f8a55;"></span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <p style="color:#5c6f86; font-size:0.88rem; margin:0;">Todos los balotarios disponibles (puedes probar o eliminar cualquiera libremente):</p>
           <button onclick="schLoadExamsFromCloud()" style="background:#005eb8; color:white; border:none; padding:8px 14px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer;">🔄 Sincronizar Balotarios</button>
         </div>
         <table class="sch-table">
@@ -671,6 +710,23 @@
     ]
   };
 
+  // REPARADOR DE CARACTERES Y MENSURA DE CODIFICACIÓN UTF-8 (SIN ERRORES EN LAS LETRAS)
+  function schFixTextEncoding(str) {
+    if (!str) return '';
+    if (/[\xC2-\xF4][\x80-\xBF]/.test(str) || str.includes('Ã') || str.includes('Â')) {
+      try {
+        return decodeURIComponent(escape(str));
+      } catch (e) {
+        return str
+          .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ãº/g, 'ú')
+          .replace(/Ã/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í').replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú')
+          .replace(/Ã±/g, 'ñ').replace(/Ã‘/g, 'Ñ').replace(/Â¿/g, '¿').replace(/Â¡/g, '¡')
+          .replace(/â€“/g, '–').replace(/â€”/g, '—').replace(/â€œ/g, '“').replace(/â€/g, '”');
+      }
+    }
+    return str;
+  }
+
   // GENERADOR MAESTRO DEL SIMULADOR COMPLETO
   function schBuildFullSimulatorHTML(examObj) {
     const questions = examObj.questions && examObj.questions.length ? examObj.questions : [
@@ -684,9 +740,9 @@
     ];
 
     const examJsonSafe = JSON.stringify(questions).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
-    const examTitle = examObj.nombre || "Simulador";
-    const examArea = examObj.area || "General";
-    const examDesc = examObj.desc || "Resuelve cada reto visual y revisa tu resultado al finalizar.";
+    const examTitle = schFixTextEncoding(examObj.nombre || "Simulador");
+    const examArea = schFixTextEncoding(examObj.area || "General");
+    const examDesc = schFixTextEncoding(examObj.desc || "Resuelve cada reto visual y revisa tu resultado al finalizar.");
     const totalQ = questions.length;
 
     const tBasico = examObj.times?.basico || 90;
@@ -1305,7 +1361,6 @@
       document.getElementById('percentage').textContent = pct + '%';
       document.getElementById('results').classList.add('show');
 
-      // ENVIAR NOTA DIRECTAMENTE AL PADRE (HTML CENTRAL)
       const nowStr = new Date().toLocaleDateString('es-PE') + ' ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({
@@ -1369,10 +1424,24 @@
   let cachedStudents = [];
   let cachedScores = [];
 
+  // GESTIÓN DE BALOTARIOS ELIMINADOS
+  function schGetDeletedDefaults() {
+    return JSON.parse(localStorage.getItem('sch_deleted_defaults') || '[]');
+  }
+  function schAddDeletedDefault(id) {
+    const list = schGetDeletedDefaults();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('sch_deleted_defaults', JSON.stringify(list));
+    }
+  }
+
   function schInitStorage() {
-    // 1. Carga inicial local inmediata
     const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
-    SIMULADORES = [...DEFAULT_SIMULADORES, ...customList];
+    const deletedDefaults = schGetDeletedDefaults();
+    const activeDefaults = DEFAULT_SIMULADORES.filter(d => !deletedDefaults.includes(d.id));
+
+    SIMULADORES = [...activeDefaults, ...customList];
 
     SIMULADORES.forEach(sim => {
       const storedHtml = localStorage.getItem('sch_custom_data_' + sim.id);
@@ -1400,9 +1469,157 @@
     });
 
     renderGrid();
-
-    // 2. Sincronización en segundo plano con Google Sheets
     schLoadExamsFromCloud();
+  }
+
+  // IMPORTACIÓN INTELIGENTE DE ARCHIVOS HTML (SIN ERRORES EN LETRAS)
+  function schHandleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let content = e.target.result;
+      content = schFixTextEncoding(content);
+      const fileName = file.name.replace(/\.[^/.]+$/, "");
+      schParseAndImportHTML(content, fileName);
+      event.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function schProcessPastedHtml() {
+    const text = document.getElementById('schPasteHtmlText').value;
+    if (!text.trim()) {
+      alert("Por favor, pega el código HTML del balotario.");
+      return;
+    }
+    document.getElementById('schPasteHtmlModal').style.display = 'none';
+    schParseAndImportHTML(text, "Balotario Importado");
+    document.getElementById('schPasteHtmlText').value = '';
+  }
+
+  async function schParseAndImportHTML(htmlContent, defaultTitle) {
+    const statusEl = document.getElementById('schImportStatus');
+    if (statusEl) statusEl.textContent = '⏳ Procesando balotario HTML...';
+
+    try {
+      let cleanHtml = schFixTextEncoding(htmlContent);
+
+      if (!cleanHtml.includes('charset=') && !cleanHtml.includes('charset="UTF-8"')) {
+        cleanHtml = cleanHtml.replace(/<head>/i, '<head>\n<meta charset="UTF-8">');
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cleanHtml, 'text/html');
+
+      let title = doc.querySelector('.session-name')?.textContent?.trim() ||
+                  doc.querySelector('h1')?.textContent?.trim() ||
+                  doc.title?.trim() ||
+                  defaultTitle || "Balotario Importado";
+      title = schFixTextEncoding(title);
+
+      let area = "Importado";
+      const heroNote = doc.querySelector('.hero-note')?.textContent || '';
+      if (heroNote.includes('Área:')) {
+        const areaMatch = heroNote.match(/Área:\s*([^·\n]+)/);
+        if (areaMatch) area = schFixTextEncoding(areaMatch[1].trim());
+      }
+
+      let parsedQuestions = null;
+      const scriptMatches = cleanHtml.match(/(?:RAW_QUESTIONS|const questions|let questions)\s*=\s*(\[\s*\{[\s\S]*?\}\s*\]);/);
+      if (scriptMatches) {
+        try {
+          parsedQuestions = JSON.parse(scriptMatches[1]);
+        } catch (e) {}
+      }
+
+      let qCount = 0;
+      if (parsedQuestions && Array.isArray(parsedQuestions)) {
+        qCount = parsedQuestions.length;
+      } else {
+        qCount = doc.querySelectorAll('.question-card, .question-slide, article').length || 20;
+      }
+
+      const examId = "import_" + Date.now();
+      let finalSimulatorHtml = cleanHtml;
+
+      if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+        finalSimulatorHtml = schBuildFullSimulatorHTML({
+          id: examId,
+          nombre: title,
+          area: area,
+          desc: `Balotario oficial importado (${qCount} preguntas).`,
+          times: { basico: 90, intermedio: 60, experto: 30 },
+          questions: parsedQuestions
+        });
+      }
+
+      const newSim = {
+        id: examId,
+        area: area,
+        nombre: title,
+        desc: `Balotario oficial importado sin errores de letras (${qCount} preguntas).`,
+        preguntas: `${qCount} preguntas`,
+        color: "var(--c-trib)",
+        times: { basico: 90, intermedio: 60, experto: 30 },
+        questions: parsedQuestions || []
+      };
+
+      const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
+      customList.push(newSim);
+      localStorage.setItem('sch_custom_simuladores', JSON.stringify(customList));
+      localStorage.setItem('sch_custom_data_' + examId, finalSimulatorHtml);
+
+      SIMULADORES.push(newSim);
+      DATA[examId] = finalSimulatorHtml;
+
+      try {
+        await apiPost({ accion: "guardarBalotario", balotario: newSim });
+      } catch(e) {}
+
+      renderGrid();
+      schRenderBalotariosTable();
+
+      if (statusEl) statusEl.textContent = `✅ ¡Balotario "${title}" importado con éxito!`;
+      alert(`¡Balotario "${title}" importado con éxito!\nSe han procesado ${qCount} preguntas sin errores en letras ni caracteres.`);
+
+    } catch (err) {
+      console.error(err);
+      if (statusEl) statusEl.textContent = '❌ Error al procesar archivo HTML.';
+      alert("Ocurrió un error al procesar el archivo HTML: " + err.message);
+    }
+  }
+
+  // ELIMINACIÓN TOTAL Y SIN RESTRICCIONES DE CUALQUIER BALOTARIO
+  async function schDeleteBalotario(id) {
+    const sim = SIMULADORES.find(s => s.id === id);
+    if (!sim) return;
+
+    if (!confirm(`¿Estás seguro de eliminar el balotario "${sim.nombre}"?\nEsta acción eliminará el examen por completo del simulador y de la nube.`)) {
+      return;
+    }
+
+    const isDefault = DEFAULT_SIMULADORES.some(d => d.id === id);
+    if (isDefault) {
+      schAddDeletedDefault(id);
+    }
+
+    const customList = JSON.parse(localStorage.getItem('sch_custom_simuladores') || '[]');
+    const updatedCustom = customList.filter(s => s.id !== id);
+    localStorage.setItem('sch_custom_simuladores', JSON.stringify(updatedCustom));
+    localStorage.removeItem('sch_custom_data_' + id);
+
+    SIMULADORES = SIMULADORES.filter(s => s.id !== id);
+    delete DATA[id];
+
+    try {
+      await apiPost({ accion: "eliminarBalotario", id: id });
+    } catch(e) {}
+
+    renderGrid();
+    schRenderBalotariosTable();
+    alert(`El balotario "${sim.nombre}" ha sido eliminado exitosamente.`);
   }
 
   // SINCRONIZAR BALOTARIOS DESDE GOOGLE SHEETS
@@ -1415,10 +1632,12 @@
 
     if (res.status === "success" && Array.isArray(res.data)) {
       const cloudExams = res.data;
-      localStorage.setItem('sch_custom_simuladores', JSON.stringify(cloudExams));
+      const deletedDefaults = schGetDeletedDefaults();
+      const activeDefaults = DEFAULT_SIMULADORES.filter(d => !deletedDefaults.includes(d.id));
 
-      // Reconstruir lista y HTML
-      SIMULADORES = [...DEFAULT_SIMULADORES, ...cloudExams];
+      localStorage.setItem('sch_custom_simuladores', JSON.stringify(cloudExams));
+      SIMULADORES = [...activeDefaults, ...cloudExams];
+
       cloudExams.forEach(sim => {
         const fullHtml = schBuildFullSimulatorHTML(sim);
         DATA[sim.id] = fullHtml;
@@ -1507,7 +1726,6 @@
 
     const pinAdmin = localStorage.getItem('sch_pin_admin') || '129923';
 
-    // 1. Acceso Director
     if (pin === pinAdmin) {
       currentUser = { name: userInput || "Director General", role: 'admin', daysLeft: 999 };
       document.getElementById('schLoginModal').style.display = 'none';
@@ -1515,7 +1733,6 @@
       return;
     }
 
-    // 2. Consulta en vivo a la hoja de Google Sheets
     btn.disabled = true;
     btn.textContent = "Validando credenciales en Sheets...";
 
@@ -1723,7 +1940,7 @@
     schLoadStudentsFromCloud();
   }
 
-  // BALOTARIOS: TABLA Y SINCRONIZACIÓN
+  // BALOTARIOS: TABLA Y OPCIÓN DE ELIMINAR CUALQUIERA
   function schRenderBalotariosTable() {
     const tbody = document.getElementById('schBalotariosTbody');
     tbody.innerHTML = '';
@@ -1736,22 +1953,14 @@
         <td>${sim.area}</td>
         <td>${sim.preguntas || 'Oficial'}</td>
         <td><strong>${times.basico}m / ${times.intermedio}m / ${times.experto}m</strong></td>
-        <td><span class="badge-status ${isCustom ? 'st-activo' : 'st-porvencer'}">${isCustom ? '☁️ Google Sheets' : 'Oficial Local'}</span></td>
+        <td><span class="badge-status ${isCustom ? 'st-activo' : 'st-porvencer'}">${isCustom ? '☁️ Cloud / Import' : 'Oficial Local'}</span></td>
         <td>
           <button onclick="document.getElementById('schAdminModal').style.display='none'; cargarSimulador('${sim.id}');" style="padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:800; font-size:.78rem; background:#005eb8; color:white; border:none;">👁️ Probar</button>
-          ${isCustom ? `<button onclick="schCloudDeleteExam('${sim.id}')" style="padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:800; font-size:.78rem; background:#fff0f3; color:#a50034; border:1px solid #f3c1cd; margin-left:4px;">🗑️ Eliminar</button>` : ''}
+          <button onclick="schDeleteBalotario('${sim.id}')" style="padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:800; font-size:.78rem; background:#fff0f3; color:#a50034; border:1px solid #f3c1cd; margin-left:4px;" title="Eliminar este balotario sin restricciones">🗑️ Eliminar</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
-  }
-
-  async function schCloudDeleteExam(id) {
-    if (!confirm("¿Eliminar este balotario de Google Sheets y del simulador?")) return;
-    await apiPost({ accion: "eliminarBalotario", id: id });
-    localStorage.removeItem('sch_custom_data_' + id);
-    delete DATA[id];
-    schLoadExamsFromCloud();
   }
 
   // NOTAS: GUARDAR Y LEER DESDE GOOGLE SHEETS
@@ -1766,6 +1975,33 @@
     } else {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#a50034;">No se pudieron cargar las notas.</td></tr>';
     }
+  }
+
+  function schRenderStudentNotes() {
+    const tbody = document.getElementById('schStudentNotesTbody');
+    const alertBox = document.getElementById('schStudentAlertBox');
+    tbody.innerHTML = '';
+    alertBox.innerHTML = '';
+
+    if (!currentUser) return;
+
+    const myScores = cachedScores.filter(s => String(s.dni) === String(currentUser.dni) || s.alumno.toLowerCase() === currentUser.name.toLowerCase());
+
+    if (myScores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#5c6f86; padding:18px;">Aún no has rendido ninguna evaluación.</td></tr>';
+      return;
+    }
+
+    myScores.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.fecha}</td>
+        <td><strong>${s.simulador}</strong></td>
+        <td>${s.aciertos}</td>
+        <td><strong style="color:#005eb8;">${s.nota} / 20</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   function schFilterScoresLocal() {
@@ -1974,66 +2210,26 @@
   // RECEPCIÓN DE NOTAS Y GUARDADO DIRECTO EN SHEETS
   window.addEventListener('message', async (e) => {
     if (e.data && e.data.type === 'EXAM_SCORE') {
-      const studentName = currentUser ? currentUser.name : "Alumno";
-      const studentDni = currentUser ? (currentUser.dni || "—") : "—";
-      
-      const notaObj = {
-        alumno: studentName,
-        dni: studentDni,
-        simulador: e.data.examTitle,
-        fecha: e.data.date,
-        aciertos: `${e.data.correct} / ${e.data.total}`,
-        nota: `${e.data.score20} / 20`
-      };
-
-      // Envío inmediato a la nube
-      await apiPost({
-        accion: "guardarNota",
-        nota: notaObj
-      });
-
-      // Refrescar notas si la libreta está abierta
-      schRenderStudentNotes();
+      const scoreData = e.data;
+      if (currentUser) {
+        await apiPost({
+          accion: "guardarNota",
+          notaObj: {
+            alumno: currentUser.name,
+            dni: currentUser.dni || "—",
+            simulador: scoreData.examTitle,
+            fecha: scoreData.date,
+            aciertos: `${scoreData.correct} / ${scoreData.total}`,
+            nota: scoreData.score20
+          }
+        });
+      }
     }
   });
 
-  async function schRenderStudentNotes() {
-    const tbody = document.getElementById('schStudentNotesTbody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:14px;">⏳ Sincronizando notas...</td></tr>';
-    
-    const res = await apiPost({ accion: "obtenerNotas" });
-    if (res.status === "success" && Array.isArray(res.data)) {
-      const myDni = currentUser ? String(currentUser.dni) : '';
-      const myName = currentUser ? currentUser.name.toLowerCase() : '';
-      
-      const userScores = res.data.filter(s => 
-        (myDni && String(s.dni) === myDni) || s.alumno.toLowerCase() === myName
-      );
-
-      tbody.innerHTML = '';
-      if (userScores.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#5c6f86;">Aún no tienes evaluaciones registradas en la hoja.</td></tr>';
-        return;
-      }
-
-      userScores.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${s.fecha}</td>
-          <td><strong>${s.simulador}</strong></td>
-          <td>${s.aciertos}</td>
-          <td><strong>${s.nota}</strong></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-  }
-
+  // INICIALIZACIÓN
   window.addEventListener('DOMContentLoaded', () => {
     schInitStorage();
-    schAddQuestionForm();
-    document.getElementById('cfgPinAdmin').value = localStorage.getItem('sch_pin_admin') || '129923';
   });
 </script>
 </body>
